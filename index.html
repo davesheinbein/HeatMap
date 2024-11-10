@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="A visualization of global temperatures from 1754 to 2015 using a heat map.">
+  <meta name="keywords" content="heat map, global temperatures, data visualization, D3.js">
+  <title>Global Temperature Heat Map</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div id="container">
+    <header>
+      <h1 id="title">Global Temperature Heat Map</h1>
+      <p id="description">This heat map visualizes the global temperatures from 1754 to 2015.</p>
+    </header>
+    <main class="main">
+      <div id="loading" class="loading">Loading data...</div> <!-- Loading indicator -->
+      <svg id="heatmap" width="800" height="500" aria-label="Heat map showing global temperatures" style="display:none;"></svg>
+      <g id="legend" aria-label="Color legend for temperature ranges" style="display:none;"></g>
+      <div id="tooltip" class="tooltip" style="display: none;"></div>
+    </main>
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="script.js" type="text/babel"></script>
+</body>
+
+</html>

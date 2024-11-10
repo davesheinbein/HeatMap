@@ -1,0 +1,166 @@
+const url =
+  "https://raw.githubusercontent.com/freeCodeCamp/ProjectReferenceData/master/global-temperature.json";
+
+document.getElementById("loading").style.display = "block"; // Show loading indicator
+
+fetch(url)
+  .then((response) => {
+    if (!response.ok) throw new Error("Network response was not ok");
+    return response.json();
+  })
+  .then((data) => {
+    document.getElementById("loading").style.display = "none"; // Hide loading indicator
+    document.getElementById("heatmap").style.display = "block"; // Show heatmap
+    document.getElementById("legend").style.display = "block"; // Show legend
+
+    createHeatmap(data);
+    createLegend(data);
+  })
+  .catch((error) => {
+    document.getElementById("loading").textContent = "Failed to load data"; // Show error message
+    console.error("Fetch error:", error);
+  });
+
+function createHeatmap(data) {
+  const baseTemperature = data.baseTemperature;
+  const dataset = data.monthlyVariance;
+
+  const margin = { top: 40, right: 30, bottom: 60, left: 70 };
+  const width = 800 - margin.left - margin.right;
+  const height = 500 - margin.top - margin.bottom;
+
+  const svg = d3
+    .select("#heatmap")
+    .append("g")
+    .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+  const xScale = d3
+    .scaleBand()
+    .domain(d3.range(1754, 2016)) // 1754
+    .range([0, width])
+    .padding(0.05);
+
+  const yScale = d3
+    .scaleBand()
+    .domain(d3.range(1, 13))
+    .range([0, height])
+    .padding(0.05);
+
+  const colorScale = d3
+    .scaleSequential(d3.interpolateRdYlBu)
+    .domain([
+      d3.min(dataset, (d) => d.variance + baseTemperature),
+      d3.max(dataset, (d) => d.variance + baseTemperature)
+    ]);
+
+  // Append axes
+  svg
+    .append("g")
+    .attr("id", "x-axis")
+    .attr("transform", `translate(0, ${height})`)
+    .call(d3.axisBottom(xScale).tickValues(d3.range(1754, 2016, 15))); // 1754
+
+  svg
+    .append("g")
+    .attr("id", "y-axis")
+    .call(
+      d3
+        .axisLeft(yScale)
+        .tickFormat((d) => d3.timeFormat("%B")(new Date(0, d - 1)))
+    );
+
+  // Append heatmap cells
+  svg
+    .selectAll(".cell")
+    .data(dataset)
+    .enter()
+    .append("rect")
+    .attr("class", "cell")
+    .attr("data-month", (d) => d.month - 1)
+    .attr("data-year", (d) => d.year)
+    .attr("data-temp", (d) => d.variance + baseTemperature)
+    .attr("x", (d) => xScale(d.year))
+    .attr("y", (d) => yScale(d.month))
+    .attr("width", xScale.bandwidth())
+    .attr("height", yScale.bandwidth())
+    .attr("fill", (d) => colorScale(d.variance + baseTemperature))
+    .on("mouseover", (event, d) => debounceTooltip(event, d, baseTemperature))
+    .on("mouseout", () => d3.select("#tooltip").style("display", "none"));
+
+  // Create the legend
+  createLegend(colorScale);
+}
+
+// Debounce tooltip display
+let tooltipTimeout;
+function debounceTooltip(event, data, baseTemperature) {
+  clearTimeout(tooltipTimeout);
+
+  tooltipTimeout = setTimeout(() => {
+    showTooltip(event, data, baseTemperature);
+  }, 100); // Adjust the delay as necessary
+}
+
+function showTooltip(event, data, baseTemperature) {
+  const tooltip = d3.select("#tooltip");
+  tooltip
+    .style("display", "block")
+    .attr("data-year", data.year)
+    .html(
+      `Year: ${data.year}<br>Month: ${d3.timeFormat("%B")(
+        new Date(0, data.month - 1)
+      )}<br>Temp: ${(data.variance + baseTemperature).toFixed(1)}°C`
+    )
+    .style("left", `${event.pageX + 5}px`)
+    .style("top", `${event.pageY - 28}px`);
+}
+
+function createLegend(colorScale) {
+  const legendWidth = 400; // Width of the legend
+  const legendHeight = 20; // Height of each rectangle in the legend
+  const legend = d3
+    .select("#legend")
+    .attr("transform", `translate(70, 0)`) // Adjust position as necessary
+    .attr("width", legendWidth)
+    .attr("height", legendHeight);
+
+  // Create a linear gradient for the legend
+  const gradient = d3
+    .select("#legend")
+    .append("defs")
+    .append("linearGradient")
+    .attr("id", "legend-gradient")
+    .attr("x1", "0%")
+    .attr("y1", "0%")
+    .attr("x2", "100%")
+    .attr("y2", "0%");
+
+  // Append color stops to the gradient
+  colorScale.ticks(4).forEach((d, i) => {
+    gradient
+      .append("stop")
+      .attr("offset", `${(i / 3) * 100}%`)
+      .attr("stop-color", colorScale(d));
+  });
+
+  // Draw the gradient rectangle
+  legend
+    .append("rect")
+    .attr("class", "legend-gradient")
+    .attr("x", 0)
+    .attr("y", 0)
+    .attr("width", legendWidth)
+    .attr("height", legendHeight)
+    .attr("fill", "url(#legend-gradient)");
+
+  // Draw the legend labels
+  const legendLabels = colorScale.ticks(4);
+  legendLabels.forEach((d, i) => {
+    legend
+      .append("text")
+      .attr("x", i * (legendWidth / 3) + legendWidth / 6) // Centering the text
+      .attr("y", legendHeight + 15) // Position below the gradient
+      .attr("text-anchor", "middle")
+      .text(`${d.toFixed(1)}°C`);
+  });
+}
